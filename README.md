@@ -5,72 +5,6 @@ Guide to sharing secret information in the age of spying and quantum computers b
 > - This is for **SERIOUS COMMUNICATION**. Like sending sensitive messages/documents/files, that can jeopardize ones freedom/safety.
 > - In simple words, if the information you are about to send got out and as a result you **GET KILLED** then this is the right method for the occasion.
 
-
-# Data Flow Overview
-```txt
-+-------------------------------------------------+                   +-------------------------------------------------+
-|                      ALICE                      |                   |                       BOB                       |
-+-------------------------------------------------+                   +-------------------------------------------------+
-                         |                                                                     |
-                         | =========== STEP 1: Generate Identity Keys (ML-DSA-87) ============ |
-                         |                                                                     |
-                         | • openssl genpkey -algorithm ML-DSA-87                              | • openssl genpkey -algorithm ML-DSA-87
-                         |   -> alice_signing_priv.pem                                         |   -> bob_signing_priv.pem
-                         | • Extract Public Verification Key:                                  | • Extract Public Verification Key:
-                         |   -> alice_signing_pub.pem                                          |   -> bob_signing_pub.pem
-                         |                                                                     |
-                         | =========== STEP 2: Exchange Public Identity Keys ================= |
-                         |                                                                     |
-                         |---- alice_signing_pub.pem (via Email / WhatsApp) ------------------>|
-                         |<--------------------- bob_signing_pub.pem (via Email / WhatsApp) ---|
-                         |                                                                     |
-                         | ========= STEP 3: Establish Shared Session Key (ML-KEM-1024) ====== |
-                         |                                                                     |
-                         | • Generate Ephemeral KEM Keypair:                                   |
-                         |   - alice_kem_priv.pem                                              |
-                         |   - alice_kem_pub.pem                                               |
-                         |                                                                     |
-                         |---- alice_kem_pub.pem --------------------------------------------->|
-                         |                                                                     | • Run Encapsulation Command:
-                         |                                                                     |   openssl pkeyutl -inkey alice_kem_pub.pem ...
-                         |                                                                     |   -> kem_ciphertext.bin
-                         |                                                                     |   -> shared_secret.bin
-                         |                                                                     |
-                         |<------------------------------------------- kem_ciphertext.bin -----|
-                         |                                                                     |
-                         | • Run Decapsulation Command:                                        |
-                         |   openssl pkeyutl -decap ...                                        |
-                         |   -> shared_secret.bin                                              |
-                         |                                                                     |
-                         | [Verification: sha256sum shared_secret.bin matches]                 | [Verification: sha256sum shared_secret.bin matches]
-                         |                                                                     |
-                         | ========== STEP 4: Encrypt & Decrypt Payload (AES-256-CBC) ======== |
-                         |                                                                     |
-                         | • Input: alice.png + shared_secret (hex) + IV                       |
-                         | • Output: encrypted_payload.enc                                     |
-                         |                                                                     |
-                         |---- encrypted_payload.enc ----------------------------------------->|
-                         |                                                                     | • Decrypt Payload:
-                         |                                                                     |   openssl enc -d -aes-256-cbc ...
-                         |                                                                     |   -> decrypted_alice.png
-                         |                                                                     |
-                         | ================== STEP 5: HMAC Integrity & Digital Signature ===== |
-                         |                                                                     |
-                         | • Generate HMAC integrity tag:                                      |
-                         |   -> payload.hmac (using shared session secret)                     |
-                         | • Sign encrypted payload with ML-DSA-87 Identity Key:               |
-                         |   -> payload.sig (using alice_signing_priv.pem)                     |
-                         |                                                                     |
-                         |---- payload.hmac & payload.sig ------------------------------------>|
-                         |                                                                     | • Verify HMAC Integrity:
-                         |                                                                     |   cmp -s payload.hmac expected.hmac
-                         |                                                                     | • Verify ML-DSA-87 Signature:
-                         |                                                                     |   openssl pkeyutl -verify ...
-                         |                                                                     |   (using alice_signing_pub.pem)
-                         v                                                                     v
-```
-
-
 # Step 0: Verify OpenSSL™ & Environment
 Ensure your **Debian™ 13.7 *"Trixie"*** system has an **OpenSSL™ version (3.3+)** that natively supports the **NIST** post-quantum cryptographic standards.
 
@@ -226,3 +160,75 @@ openssl pkeyutl -verify -pubin -inkey alice_signing_pub.pem -rawin -in encrypted
 ```
 
 > **Verification:** The HMAC comparison outputs `HMAC Verified Successfully: Ciphertext is authentic` and the OpenSSL verification command outputs `Signature Verified Successfully`, proving with double redundancy that the file originated from Alice and has not been tampered with in transit.
+
+
+# If Bob Wants to Send Something to Alice
+
+Now that both Alice and Bob share the exact same session secret (via **ML-KEM-1024**) and have exchanged their long-term public identity keys (`alice_signing_pub.pem` and `bob_signing_pub.pem`), Bob can send files back to Alice securely. The reverse workflow follows the exact same cryptographic rigor: **Bob encrypts and signs**, and **Alice verifies and decrypts**.
+
+## Step A: Bob Encrypts and Signs (On Bob's Machine)
+
+Before sending anything, Bob processes his file (e.g., `bob.png`) using the shared secret and his ML-DSA-87 signing key (`bob_signing_priv.pem`).
+
+### 1. Encrypt Bob's File (AES-256-CBC)
+
+Using the shared session secret and the agreed-upon IV:
+
+> [!NOTE]
+> It is **HIGHLY RECOMMENDED** that Bob uses a **DIFFERENT** IV to encrypt his files when sending to Alice. Which is `efd2cf59e3af339ea3ea27589b6a33f9` in this case.
+
+```bash
+openssl enc -aes-256-cbc -salt -in bob.png -out encrypted_bob_payload.enc -K $(hexdump -v -e '/1 "%02x"' shared_secret.bin) -iv efd2cf59e3af339ea3ea27589b6a33f9
+```
+
+### 2. Generate HMAC Integrity Tag
+
+Using the shared secret to create a MAC so Alice can detect any tampering:
+
+```bash
+openssl dgst -sha256 -mac HMAC -macopt hexkey:$(hexdump -v -e '/1 "%02x"' shared_secret.bin) -binary -out bob_payload.hmac encrypted_bob_payload.enc
+```
+
+### 3. Sign the Encrypted Payload
+
+Bob signs the encrypted file using his **ML-DSA-87** private identity key (`bob_signing_priv.pem`) to prove the file came from him:
+
+```bash
+openssl pkeyutl -sign -inkey bob_signing_priv.pem -rawin -in encrypted_bob_payload.enc -out bob_payload.sig
+```
+
+> **Action:** Bob sends `encrypted_bob_payload.enc`, `bob_payload.hmac`, and `bob_payload.sig` to Alice via email or IM.
+
+### Step B: Alice Verifies and Decrypts (On Alice's Machine)
+
+Once Alice receives the three files from Bob, she runs the verification checks **before** decrypting the payload.
+
+#### 1. Verify HMAC Integrity
+
+Alice checks the HMAC using her identical shared secret:
+
+```bash
+openssl dgst -sha256 -mac HMAC -macopt hexkey:$(hexdump -v -e '/1 "%02x"' shared_secret.bin) -binary -out expected_bob.hmac encrypted_bob_payload.enc
+```
+
+```bash
+cmp -s bob_payload.hmac expected_bob.hmac && echo "HMAC Verified Successfully: Ciphertext is authentic" || echo "Tampering detected!"
+```
+
+#### 2. Verify Bob's Post-Quantum Digital Signature
+
+Alice verifies the signature using **Bob's public identity key** (`bob_signing_pub.pem`):
+
+```bash
+openssl pkeyutl -verify -pubin -inkey bob_signing_pub.pem -rawin -in encrypted_bob_payload.enc -sigfile bob_payload.sig
+```
+
+#### 3. Decrypt the Payload
+
+Once authentication and integrity are fully confirmed, Alice decrypts the file back into its original form using the shared secret and IV:
+
+```bash
+openssl enc -d -aes-256-cbc -in encrypted_bob_payload.enc -out decrypted_bob.png -K $(hexdump -v -e '/1 "%02x"' shared_secret.bin) -iv efd2cf59e3af339ea3ea27589b6a33f9
+```
+
+> **Verification:** Alice can run `sha512sum decrypted_bob.png` and compare it with Bob's original file hash to ensure a byte-for-byte match. The HMAC comparison outputs `HMAC Verified Successfully: Ciphertext is authentic` and the OpenSSL verification command outputs `Signature Verified Successfully`, proving with double redundancy that the file originated from Alice and has not been tampered with in transit.
