@@ -139,7 +139,7 @@ openssl genpkey -algorithm ML-KEM-1024 -out alice_kem_priv.pem
 openssl pkey -in alice_kem_priv.pem -pubout -out alice_kem_pub.pem
 ```
 
-**Bob** receives `alice_kem_pub.pem`. Bob runs the encapsulation command, which outputs a ciphertext file (`kem_ciphertext.bin`) to send back to Alice, and writes the shared secret to `shared_secret.bin`:
+**Bob** receives `alice_kem_pub.pem`. Bob runs the encapsulation command, which outputs a ciphertext file (`kem_ciphertext.bin`) to send back to Alice and writes the shared secret to `shared_secret.bin`:
 ```bash
 openssl pkeyutl -inkey alice_kem_pub.pem -pubin -encap -secret shared_secret.bin -out kem_ciphertext.bin
 ```
