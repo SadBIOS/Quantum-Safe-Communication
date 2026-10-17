@@ -9,7 +9,7 @@ Guide to sharing secret information in the age of spying and quantum computers b
 # Step 0: Verify OpenSSL™ & Environment
 Ensure your **Debian™ 13.7 *"Trixie"*** system has an **OpenSSL™ version (3.3+)** that natively supports the **NIST** post-quantum cryptographic standards.
 
-> This case the version is `OpenSSL 4.0.3 29 Sep 2026 (Library: OpenSSL 4.0.3 29 Sep 2026)`
+> Since this is the version we will be working with you are encouraged to check out the [build guide](https://github.com/SadBIOS/PQC-Compliant-Inter-Node-Bridge#manual-installation) for `OpenSSL 4.0.3 29 Sep 2026 (Library: OpenSSL 4.0.3 29 Sep 2026)`
 
 Run the following command in your terminal:
 
@@ -114,3 +114,50 @@ openssl enc -d -aes-256-cbc -in encrypted_alice_payload.enc -out decrpted_alice.
 ```
 
 > **Verification:** Run `sha512sum <file>` to verify the hashes match byte-for-byte.
+
+
+# Step 4: Double Redundancy, HMAC Tamper Detection & Quantum-Safe Identity Signing (Authentication)
+
+In order to guarantee that the encrypted payload has not been tampered with or modified in transit, Alice signs `encrypted_alice_payload.enc` using an **HMAC-SHA256** MAC built directly from the shared session secret. Additionally, she applies a dual-layer signing process to the encrypted payload by using her **ML-DSA-87** private identity key.
+
+> [!WARNING]
+> - This section is separate but the signing **MUST** be done on the **SENDERS SIDE** and subsequently verified.
+> - This step is **STRICTLY NECESSARY** because we used `AES-256-CBC` which does not have inbuilt tamper protection (like `AES-256-GCM`).
+> - **ONLY DECRYPT AFTER BOTH SIGNATURES MATCH** 
+
+**Alice generates the HMAC signature for integrity using the shared secret:**
+
+```bash
+openssl dgst -sha256 -mac HMAC -macopt hexkey:$(hexdump -v -e '/1 "%02x"' shared_secret.bin) -binary -out alice_payload.hmac encrypted_alice_payload.enc
+
+```
+
+**Alice** signs the encrypted payload using her post-quantum identity key (`alice_signing_priv.pem`):
+
+```bash
+openssl pkeyutl -sign -inkey alice_signing_priv.pem -rawin -in encrypted_alice_payload.enc -out alice_payload.sig
+
+```
+
+**Alice** sends `encrypted_alice_payload.enc`, `alice_payload.hmac` and `alice_payload.sig` to Bob.
+
+**Bob** verifies the `HMAC` integrity using his identical shared secret:
+
+```bash
+openssl dgst -sha256 -mac HMAC -macopt hexkey:$(hexdump -v -e '/1 "%02x"' shared_secret.bin) -binary -out expected_alice.hmac encrypted_alice_payload.enc
+
+```
+
+```bash
+cmp -s alice_payload.hmac expected_alice.hmac && echo "HMAC Verified Successfully: Ciphertext is authentic" || echo "Tampering detected!"
+
+```
+
+**Bob verifies Alice's digital signature using Alice's public identity key (`alice_signing_pub.pem`):**
+
+```bash
+openssl pkeyutl -verify -pubin -inkey alice_signing_pub.pem -rawin -in encrypted_alice_payload.enc -sigfile alice_payload.sig
+
+```
+
+> **Verification:** The HMAC comparison outputs `HMAC Verified Successfully: Ciphertext is authentic` and the OpenSSL verification command outputs `Signature Verified Successfully`, proving with double redundancy that the file originated from Alice and has not been tampered with in transit.
