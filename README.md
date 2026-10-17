@@ -242,7 +242,7 @@ openssl pkeyutl -verify -pubin -inkey alice_signing_pub.pem -rawin -in encrypted
 
 # If Bob Wants to Send Something to Alice
 
-Now that both Alice and Bob share the exact same session secret (via **ML-KEM-1024**) and have exchanged their long-term public identity keys (`alice_signing_pub.pem` and `bob_signing_pub.pem`), Bob can send files back to Alice securely. The reverse workflow follows the exact same cryptographic rigor: **Bob encrypts and signs**, and **Alice verifies and decrypts**.
+Now that both Alice and Bob share the exact same session secret (via **ML-KEM-1024**) and have exchanged their long-term public identity keys (`alice_signing_pub.pem` and `bob_signing_pub.pem`), Bob can send files back to Alice securely. The reverse workflow follows the exact same cryptographic rigor: **Bob encrypts and signs** and **Alice verifies and decrypts**.
 
 ## Step A: Bob Encrypts and Signs (On Bob's Machine)
 
@@ -275,7 +275,7 @@ Bob signs the encrypted file using his **ML-DSA-87** private identity key (`bob_
 openssl pkeyutl -sign -inkey bob_signing_priv.pem -rawin -in encrypted_bob_payload.enc -out bob_payload.sig
 ```
 
-> **Action:** Bob sends `encrypted_bob_payload.enc`, `bob_payload.hmac`, and `bob_payload.sig` to Alice via email or IM.
+> **Action:** Bob sends `encrypted_bob_payload.enc`, `bob_payload.hmac` and `bob_payload.sig` to Alice via email or IM.
 
 ### Step B: Alice Verifies and Decrypts (On Alice's Machine)
 
