@@ -50,3 +50,31 @@ Finally, **Alice** sends `alice_signing_pub.pem` to **Bob** via email, WhatsApp 
 > **Verification:** Check that both key files exist and contain PEM headers by running `ls -l alice_signing_*.pem`. Also, open the received public key file in a text editor or terminal (cat alice_signing_pub.pem) to ensure it contains the `-----BEGIN PUBLIC KEY-----` header without truncation.
 
 
+# Step 2: Establish a Shared Session Key (ML-KEM-1024)
+To derive a shared 256-bit secret without transmitting private keys, Alice and Bob use **ML-KEM-1024** (**NIST Security Level 5**, the highest standardized bit depth).
+
+**Alice** generates an ephemeral KEM keypair and sends her public key file (`alice_kem_pub.pem`) to Bob:
+```bash
+openssl genpkey -algorithm ML-KEM-1024 -out alice_kem_priv.pem
+```
+
+```bash
+openssl pkey -in alice_kem_priv.pem -pubout -out alice_kem_pub.pem
+```
+
+**Bob** receives `alice_kem_pub.pem`. Bob runs the encapsulation command, which outputs a ciphertext file (`kem_ciphertext.bin`) to send back to Alice, and writes the shared secret to `shared_secret.bin`:
+```bash
+openssl pkeyutl -inkey alice_kem_pub.pem -pubin -encap -secret shared_secret.bin -out kem_ciphertext.bin
+```
+
+**Bob** sends kem_ciphertext.bin back to Alice via email/IM.
+Alice receives `kem_ciphertext.bin` and decapsulates it using her private KEM key to recover the exact same shared secret:
+```bash
+openssl pkeyutl -inkey alice_kem_priv.pem -decap -secret shared_secret.bin -in kem_ciphertext.bin
+```
+
+> **Verification:** Both Alice and Bob verify their derived shared secrets match perfectly by running:
+> ```bash
+> sha256sum shared_secret.bin
+> ```
+> Both terminals must display the **EXACT SAME** SHA-256 hash string.
