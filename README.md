@@ -78,3 +78,39 @@ openssl pkeyutl -inkey alice_kem_priv.pem -decap -secret shared_secret.bin -in k
 > sha512sum shared_secret.bin
 > ```
 > Both terminals must display the **EXACT SAME** SHA-256 hash string.
+
+
+# Step 3: Encrypt and Decrypt Multi-Gigabyte Files or Text
+Using the shared secret one can securely encrypt anything, from a short text snippet to a multi-gigabyte file. The binary shared secret is converted into a hex key string on the fly. Now, to perform **AES-256-CBC** encryption:
+
+> [!NOTE]
+> Create and share a **NIST** recommended standard **16-Byte** (`128-Bit` or 32 Hex Characters) initialization vector beforehand (unlike secret keys this can be shared safely over the open internet).
+> ```bash
+> openssl rand -hex 16
+> ```
+
+> [!WARNING]
+> - I personally recommend another way to get to the same initialization vector. One can do this by taking the `hash` of a publicly known entity or other known entity and use that rather than transmitting a unique one over the `clearnet`. This can reduce the risk of `de-anonymization` via `linkage attacks` or other methods of `attribution`.
+> - For example:
+> > ```bash
+> > string=f22d85a8e2918daa7179879da32b1ceddb99a772dd6a1e4b4c7328cfd83ae57a; echo ${string:0:32}
+> > ```
+
+## Encrypt a file (e.g., a moderately sized PNG file)
+
+Let's assume the pre-shared initialization vector is `091d3d814eaf109650f2e7d182b43d2e`
+
+```bash
+openssl enc -aes-256-cbc -salt -in alice.png -out encrypted_alice_payload.enc -K $(hexdump -v -e '/1 "%02x"' shared_secret.bin) -iv 091d3d814eaf109650f2e7d182b43d2e
+```
+
+
+## Decrypt the payload on the receiving end
+
+After Alice sends Bob the `encrypted_alice_payload.enc` over email/IM. Bob runs:
+
+```bash
+openssl enc -d -aes-256-cbc -in encrypted_alice_payload.enc -out decrpted_alice.png -K $(hexdump -v -e '/1 "%02x"' shared_secret.bin) -iv 091d3d814eaf109650f2e7d182b43d2e
+```
+
+> **Verification:** Run `sha512sum <file>` to verify the hashes match byte-for-byte.
