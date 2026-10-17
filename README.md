@@ -51,7 +51,7 @@ Finally, **Alice** sends `alice_signing_pub.pem` to **Bob** via email, WhatsApp 
 
 
 # Step 2: Establish a Shared Session Key (ML-KEM-1024)
-To derive a shared 256-bit secret without transmitting private keys, Alice and Bob use **ML-KEM-1024** (**NIST Security Level 5**, the highest standardized bit depth).
+To derive a shared **256-bit** (`128-bit` effective Quantum Security taking Grover's Algorithm into consideration) secret without transmitting private keys, Alice and Bob use **ML-KEM-1024** (**NIST Security Level 5**, the highest standardized bit depth).
 
 **Alice** generates an ephemeral KEM keypair and sends her public key file (`alice_kem_pub.pem`) to Bob:
 ```bash
@@ -75,6 +75,6 @@ openssl pkeyutl -inkey alice_kem_priv.pem -decap -secret shared_secret.bin -in k
 
 > **Verification:** Both Alice and Bob verify their derived shared secrets match perfectly by running:
 > ```bash
-> sha256sum shared_secret.bin
+> sha512sum shared_secret.bin
 > ```
 > Both terminals must display the **EXACT SAME** SHA-256 hash string.
