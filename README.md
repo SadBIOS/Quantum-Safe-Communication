@@ -9,7 +9,7 @@ Guide to sharing secret information in the age of spying and quantum computers b
 
 <details>
 
-<summary>Heavily Simplified Data Flow for Visualization</summary>
+<summary>Heavily Simplified Data Flow for Visualization (View in Desktop Browser for Best Results)</summary>
 
 
 ```txt
