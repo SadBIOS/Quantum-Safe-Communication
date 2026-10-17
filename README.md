@@ -45,4 +45,8 @@ openssl pkey -in alice_signing_priv.pem -pubout -out alice_signing_pub.pem
 
 **Bob** does the exact same on his machine to generate `bob_signing_priv.pem` and `bob_signing_pub.pem`.
 
-> **Verification:** Check that both key files exist and contain PEM headers by running `ls -l alice_signing_*.pem`
+Finally, **Alice** sends `alice_signing_pub.pem` to **Bob** via email, WhatsApp or any messaging app. **Bob** does the same with his public key. Now they both have each others signing keys.
+
+> **Verification:** Check that both key files exist and contain PEM headers by running `ls -l alice_signing_*.pem`. Also, open the received public key file in a text editor or terminal (cat alice_signing_pub.pem) to ensure it contains the `-----BEGIN PUBLIC KEY-----` header without truncation.
+
+
