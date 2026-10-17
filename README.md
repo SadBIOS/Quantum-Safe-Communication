@@ -6,6 +6,71 @@ Guide to sharing secret information in the age of spying and quantum computers b
 > - In simple words, if the information you are about to send got out and as a result you **GET KILLED** then this is the right method for the occasion.
 
 
+# Data Flow Overview
+```txt
++-------------------------------------------------+                   +-------------------------------------------------+
+|                      ALICE                      |                   |                       BOB                       |
++-------------------------------------------------+                   +-------------------------------------------------+
+                         |                                                                     |
+                         | =========== STEP 1: Generate Identity Keys (ML-DSA-87) ============ |
+                         |                                                                     |
+                         | • openssl genpkey -algorithm ML-DSA-87                              | • openssl genpkey -algorithm ML-DSA-87
+                         |   -> alice_signing_priv.pem                                         |   -> bob_signing_priv.pem
+                         | • Extract Public Verification Key:                                  | • Extract Public Verification Key:
+                         |   -> alice_signing_pub.pem                                          |   -> bob_signing_pub.pem
+                         |                                                                     |
+                         | =========== STEP 2: Exchange Public Identity Keys ================= |
+                         |                                                                     |
+                         |---- alice_signing_pub.pem (via Email / WhatsApp) ------------------>|
+                         |<--------------------- bob_signing_pub.pem (via Email / WhatsApp) ---|
+                         |                                                                     |
+                         | ========= STEP 3: Establish Shared Session Key (ML-KEM-1024) ====== |
+                         |                                                                     |
+                         | • Generate Ephemeral KEM Keypair:                                   |
+                         |   - alice_kem_priv.pem                                              |
+                         |   - alice_kem_pub.pem                                               |
+                         |                                                                     |
+                         |---- alice_kem_pub.pem --------------------------------------------->|
+                         |                                                                     | • Run Encapsulation Command:
+                         |                                                                     |   openssl pkeyutl -inkey alice_kem_pub.pem ...
+                         |                                                                     |   -> kem_ciphertext.bin
+                         |                                                                     |   -> shared_secret.bin
+                         |                                                                     |
+                         |<------------------------------------------- kem_ciphertext.bin -----|
+                         |                                                                     |
+                         | • Run Decapsulation Command:                                        |
+                         |   openssl pkeyutl -decap ...                                        |
+                         |   -> shared_secret.bin                                              |
+                         |                                                                     |
+                         | [Verification: sha256sum shared_secret.bin matches]                 | [Verification: sha256sum shared_secret.bin matches]
+                         |                                                                     |
+                         | ========== STEP 4: Encrypt & Decrypt Payload (AES-256-CBC) ======== |
+                         |                                                                     |
+                         | • Input: alice.png + shared_secret (hex) + IV                       |
+                         | • Output: encrypted_payload.enc                                     |
+                         |                                                                     |
+                         |---- encrypted_payload.enc ----------------------------------------->|
+                         |                                                                     | • Decrypt Payload:
+                         |                                                                     |   openssl enc -d -aes-256-cbc ...
+                         |                                                                     |   -> decrypted_alice.png
+                         |                                                                     |
+                         | ================== STEP 5: HMAC Integrity & Digital Signature ===== |
+                         |                                                                     |
+                         | • Generate HMAC integrity tag:                                      |
+                         |   -> payload.hmac (using shared session secret)                     |
+                         | • Sign encrypted payload with ML-DSA-87 Identity Key:               |
+                         |   -> payload.sig (using alice_signing_priv.pem)                     |
+                         |                                                                     |
+                         |---- payload.hmac & payload.sig ------------------------------------>|
+                         |                                                                     | • Verify HMAC Integrity:
+                         |                                                                     |   cmp -s payload.hmac expected.hmac
+                         |                                                                     | • Verify ML-DSA-87 Signature:
+                         |                                                                     |   openssl pkeyutl -verify ...
+                         |                                                                     |   (using alice_signing_pub.pem)
+                         v                                                                     v
+```
+
+
 # Step 0: Verify OpenSSL™ & Environment
 Ensure your **Debian™ 13.7 *"Trixie"*** system has an **OpenSSL™ version (3.3+)** that natively supports the **NIST** post-quantum cryptographic standards.
 
