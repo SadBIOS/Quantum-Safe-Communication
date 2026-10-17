@@ -43,6 +43,6 @@ openssl genpkey -algorithm ML-DSA-87 -out alice_signing_priv.pem
 openssl pkey -in alice_signing_priv.pem -pubout -out alice_signing_pub.pem
 ```
 
+**Bob** does the exact same on his machine to generate `bob_signing_priv.pem` and `bob_signing_pub.pem`.
 
-(Bob does the exact same on his machine to generate `bob_signing_priv.pem` and `bob_signing_pub.pem`).
 > **Verification:** Check that both key files exist and contain PEM headers by running `ls -l alice_signing_*.pem`
