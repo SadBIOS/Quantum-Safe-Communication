@@ -84,7 +84,7 @@ Guide to sharing secret information in the age of spying and quantum computers b
 
 
 # Step 0: Verify OpenSSL™ & Environment
-Ensure your **Debian™ 13.7 *"Trixie"*** system has an **OpenSSL™ version (3.3+)** that natively supports the **NIST** post-quantum cryptographic standards.
+Ensure your **Debian™ 13.7 *"Trixie"*** (the OS version is not a hard requirement) system has an **OpenSSL™ version (3.3+)** that natively supports the **NIST** post-quantum cryptographic standards.
 
 > Since this is the version we will be working with you are encouraged to check out the [build guide](https://github.com/SadBIOS/PQC-Compliant-Inter-Node-Bridge#manual-installation) for `OpenSSL 4.0.3 29 Sep 2026 (Library: OpenSSL 4.0.3 29 Sep 2026)`
 
